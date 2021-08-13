@@ -1,0 +1,9 @@
+cert: supplier_self.atbmarket.com.pem
+dh: dhparam.pem
+
+router_id: '{{ inventory_hostname }}'
+virtual_ip: 192.168.123.1/24
+auth_type: PASS
+auth_pass: 232323
+virtual_router_id: 34
+vrrp_interface: eth0

@@ -1,0 +1,20 @@
+- name: restart nginx 
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+    name: nginx
+  
+- name: restart php-fpm 
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+    name: php-fpm
+  
+- name: restart lsyncd
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+    name: lsyncd

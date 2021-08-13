@@ -1,0 +1,31 @@
+vrrp_script chk_nginx {
+    script "pidof nginx"
+    interval 2
+}
+
+vrrp_instance VI_1 {
+    interface {{ vrrp_interface }}
+    {% if inventory_hostname == groups['WLB'][0] %}state MASTER{% else %}state BACKUP{% endif %}    
+    priority 200
+    virtual_router_id {{ virtual_router_id }}
+    unicast_src_ip {{ ansible_host }}
+    unicast_peer {
+        {% for host in groups['WLB'] %}{% if inventory_hostname != host %}
+        {{hostvars[host]['ansible_host']}},
+        {% endif %}{% endfor %}
+        #IP_ADDRESS_WLB-2,
+
+    }
+    authentication {
+        auth_type {{ auth_type }}
+        auth_pass {{ auth_pass }}
+    }
+
+    track_script {
+        chk_nginx
+    }
+
+ virtual_ipaddress {
+    {{ virtual_ip }} dev {{ vrrp_interface }}  
+ }
+}

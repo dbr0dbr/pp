@@ -1,0 +1,54 @@
+- name: Template configuration file for /etc/nginx/nginx.conf
+  template:
+    src:  nginx.conf.j2
+    dest: '/etc/nginx/nginx.conf'
+  notify:
+    - restart nginx
+  tags: reconfigure
+
+- name: Copy cert
+  ansible.builtin.copy:
+    src: '{{ cert }}'
+    dest: '/etc/ssl/{{ cert }}'
+    owner: root
+    group: root
+
+- name: Copy dh
+  ansible.builtin.copy:
+    src: '{{ dh }}'
+    dest: '/etc/ssl/certs/{{ dh }}'
+    owner: root
+    group: root
+
+- name: install keepalived
+  yum:
+    name: keepalived
+  environment: "{{ proxy_env }}"
+
+- name: Template configuration file for /etc/keepalived/keepalived.conf
+  template:
+    src:  keepalived.conf.j2
+    dest: '/etc/keepalived/keepalived.conf'
+  notify:
+    - restart keepalived
+
+- name: Add firewall rules for keepalived
+  command: "firewall-cmd --direct --permanent --add-rule ipv4 filter {{ item | upper }}PUT 0 --{{ item }}-interface {{ vrrp_interface }} --destination 224.0.0.18 --protocol vrrp -j ACCEPT"
+  loop:
+    - in
+    - out
+  register: firewall_result
+  changed_when: "firewall_result.stderr.find('ALREADY_ENABLED') < 0"
+  become: yes
+  
+- name: Reload firewall
+  command: "firewall-cmd --reload"
+  become: yes
+  when: firewall_result.changed 
+
+- name: Configurate se linux for keepalived
+  shell: systemctl start keepalived; sleep 2; grep keepalived_t /var/log/audit/audit.log | audit2allow -M keepalived_t; semodule -i keepalived_t.pp
+  args:
+    chdir: "/etc/keepalived"
+    creates: "/etc/keepalived/keepalived_t.pp"
+  tags: never

@@ -1,0 +1,12 @@
+- name: restart proxysql 
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    name: proxysql
+  
+- name: restart keepalived
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    enabled: yes
+    name: keepalived
