@@ -3,6 +3,7 @@
      name: "{{ php_repo_url}}"
      state: present
   environment: "{{ proxy_env }}"
+  ignore_errors: yes
 
 - name: "Configure remi repository"
   shell: "yum-config-manager --enable remi-php{{ php_ver }}"

@@ -1,13 +1,10 @@
-- name:  set percona cluster ips
-  set_fact:
-    percona_cluster_ips:  "{{ groups['percona'] | map('extract', hostvars, ['ansible_host']) | list }}"
 
 - name: Install percona repo.
   yum:
      name: "{{ percona_repo_url}}"
      state: present
   environment: "{{ proxy_env }}"
-
+  
 - name: "Configure Percona repository"
   shell: "percona-release enable-only pxc-{{ percona_ver }} release"
   environment: "{{ proxy_env }}"
@@ -15,7 +12,7 @@
 - name: "Configure Percona repository"
   shell: "percona-release enable tools release"
   environment: "{{ proxy_env }}"
-
+  
 - name: Install proxysql2.
   yum:
      name: "proxysql2"
@@ -63,7 +60,7 @@
   template:
     src: .my.cnf.j2
     dest: '/root/.my.cnf'
-  vars:
+  vars: 
     mysql_root_password: "admin"
   when: install_status.changed
 
@@ -74,17 +71,16 @@
     - "SAVE ADMIN VARIABLES TO DISK;"
     - "LOAD ADMIN VARIABLES TO RUNTIME;"
   when: install_status.changed
-
+    
 - name: Template configuration file for /root/.my.cnf (master)
   template:
     src: .my.cnf.j2
     dest: '/root/.my.cnf'
 
 - name: configure cluster servers
-  shell: mysql -u admin -h 127.0.0.1 -P 6032 -e " INSERT INTO mysql_servers(hostgroup_id, hostname, port) VALUES (0,  '{{ item }}'  , 3306); "
-  with_items: "{{ percona_cluster_ips }}"
-  when: install_status.changed
-
+  shell: mysql -u admin -h 127.0.0.1 -P 6032 -e " INSERT INTO mysql_servers(hostgroup_id, hostname, port) VALUES (0,  '{{ hostvars[groups['percona_rez'][0]]['ansible_host'] }}'  , 3306); "
+  when: install_status.changed  
+  
 - name: save changes
   shell: mysql --connect-expired-password -u admin -h 127.0.0.1 -P 6032 -e "{{ item }}"
   with_items:
@@ -97,7 +93,7 @@
 
 - name: configure proxysql_pass
   shell: mysql -u admin -h 127.0.0.1 -P 6032 -e "UPDATE global_variables SET variable_value= '{{ proxysql_pass }}' WHERE variable_name='mysql-monitor_password';"
-
+  
 - name: save changes
   shell: mysql --connect-expired-password -u admin -h 127.0.0.1 -P 6032 -e "{{ item }}"
   with_items:
@@ -106,7 +102,6 @@
     - "LOAD ADMIN VARIABLES TO RUNTIME;"
     - "SAVE ADMIN VARIABLES TO DISK;"
 
-
 - name: change sql app password
   shell: mysql -u admin -h 127.0.0.1 -P 6032 -e "{{ item }}"
   with_items:
@@ -114,29 +109,3 @@
     - "LOAD MYSQL USERS TO RUNTIME;"
     - "SAVE MYSQL USERS TO DISK;"
   when: install_status.changed
-
-- name: install keepalived
-  yum:
-    name: keepalived
-  environment: "{{ proxy_env }}"
-
-- name: Template configuration file for /etc/keepalived/keepalived.conf
-  template:
-    src:  keepalived.conf.j2
-    dest: '/etc/keepalived/keepalived.conf'
-  notify:
-    - restart keepalived
-
-- name: Add firewall rules for keepalived
-  command: "firewall-cmd --direct --permanent --add-rule ipv4 filter {{ item | upper }}PUT 0 --{{ item }}-interface {{ vrrp_interface }} --destination 224.0.0.18 --protocol vrrp -j ACCEPT"
-  loop:
-    - in
-    - out
-  register: firewall_result
-  changed_when: "firewall_result.stderr.find('ALREADY_ENABLED') < 0"
-  become: yes
-
-- name: Reload firewall
-  command: "firewall-cmd --reload"
-  become: yes
-  when: firewall_result.changed

@@ -1,11 +1,11 @@
 
-- hosts: WLB
+- hosts: WLB1
   remote_user: root
   roles:
    - nginx
    - web_balancer 
 
-- hosts: web
+- hosts: web1
   remote_user: root
   roles:
    - nginx
@@ -23,6 +23,10 @@
   roles:
    - proxysql2   
    
-
+- hosts: percona_rez
+  remote_user: root
+  roles:
+   - percona_rez
+   - proxysql2_rez
 
 

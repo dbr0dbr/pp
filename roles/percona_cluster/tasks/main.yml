@@ -1,9 +1,9 @@
 - name: Get server_id
-  set_fact: 
+  set_fact:
     server_id: "{% for name in groups['percona'] %}{% if name == inventory_hostname %}{{ loop.index }}{% endif %}{% endfor %}"
 
 - name: Set mysql servicename for nodes
-  set_fact: 
+  set_fact:
     mysql_service_name: '{% if server_id == "1" %}mysql@bootstrap{% else %}mysql{% endif %}'
 
 - name: Install percona repo.
@@ -35,11 +35,11 @@
   environment: "{{ proxy_env }}"
 
 - name: get dirty line for wsrep_cluster_address
-  set_fact: 
+  set_fact:
     wsrep_cluster_address_dirty_line: gcomm://{{ansible_host}},{% for host in groups['percona'] %}{% if hostvars[host]['ansible_host'] != ansible_host%}{{ hostvars[host]['ansible_host'] }},{% endif %}{% endfor %}
-    
+
 - name: get line for wsrep_cluster_address
-  set_fact: 
+  set_fact:
     wsrep_cluster_address_line: "{{ wsrep_cluster_address_dirty_line[:-1] }}"
 
 - name: Template configuration file for /etc/my.cnf
@@ -52,12 +52,12 @@
 - name: installing python mysql libraries
   yum: name=MySQL-python
   environment: "{{ proxy_env }}"
-  
+
 - name: Install policycoreutils-python.x86_64.
   yum:
      name: "policycoreutils-python.x86_64"
   environment: "{{ proxy_env }}"
-  
+
 
 - name: Open ports for mysql
   firewalld:
@@ -103,7 +103,7 @@
   template:
     src: .my.cnf.j2
     dest: '/root/.my.cnf'
-  vars: 
+  vars:
     mysql_root_password: "{{ temp_pass.stdout }}"
   when: install_status.changed and server_id == '1'
 
@@ -145,7 +145,7 @@
     name: '{{ mysql_app_user }}'
     password: '{{ mysql_app_pass }}'
     priv: '{{ mysql_app_priv }}.*:ALL'
-    host: '{{ hostvars[groups["DLB"][0]]["ansible_host"] }}'
+    host: '%'
     state: present
   when: server_id == '1'
 
@@ -162,13 +162,4 @@
     state: import
     target: /tmp/dump.sql
   when: server_id == '1' and dump is defined
-
-- name: Create mysql user
-  mysql_user:
-    login_user: root
-    name: '{{ mysql_app_user }}'
-    password: '{{ mysql_app_pass }}'
-    priv: '{{ mysql_app_priv }}.*:ALL'
-    state: present
-  when: server_id == '1'
 
