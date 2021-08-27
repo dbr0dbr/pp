@@ -1,0 +1,26 @@
+- name: ensures {{ script_suite_dir }} dir exists
+  file: 
+    path: '{{ script_suite_dir }}' 
+    state: directory
+
+- name: Template configuration file backup_suite.sh
+  template:
+    src: backup_suite.sh.j2
+    dest: '{{ script_suite_dir }}/backup_suite.sh'
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: ensures {{ backup_suite_dir }} dir exists
+  file: 
+    path: '{{ backup_suite_dir }}' 
+    state: directory
+
+- name: Creates a cron file for suite backup in /etc/cron.d
+  cron:
+    name: backup
+    minute: "{{ backup_suite_min }}"
+    hour: "{{ backup_suite_hour }}"
+    user: root
+    job: "{{ script_suite_dir }}/backup_suite.sh >> {{ backup_suite_log }} 2>&1"
+    cron_file: backup

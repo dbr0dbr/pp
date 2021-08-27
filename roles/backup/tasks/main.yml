@@ -1,0 +1,7 @@
+- name: backup web
+  include_tasks: suite.yml
+  when: inventory_hostname == groups['web'][0]
+
+- name: backup DB
+  include_tasks: db.yml
+  when: inventory_hostname == groups['percona'][0]

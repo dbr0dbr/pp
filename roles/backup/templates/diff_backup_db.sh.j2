@@ -1,0 +1,13 @@
+#!/bin/bash
+DATA1=`date +%Y-%m-%d`
+DATA2=`date +%H-%M-%S`
+BACKUP_DIR="{{ diff_backup_db_dir }}"
+
+
+echo "*****`data` start full backup*****"
+xtrabackup --backup --target-dir=$BACKUP_DIR/$DATA1/diff-$DATA2 --user=root --diffremental-basedir=$BACKUP_DIR/$DATA1/full
+cd $BACKUP_DIR/$DATA1/diff-$DATA2
+tar -czvf $BACKUP_DIR/$DATA1/diff-$DATA2.tar.gz *
+rm -rf $BACKUP_DIR/$DATA1/diff-$DATA2
+echo "*****`data` complete full backup*****"
+echo ""

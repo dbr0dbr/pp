@@ -1,23 +1,25 @@
 
-- hosts: WLB1
+- hosts: WLB
   remote_user: root
   roles:
-   - nginx
-   - web_balancer 
+   #- nginx
+   #- web_balancer 
 
-- hosts: web1
+- hosts: web
   remote_user: root
   roles:
-   - nginx
-   - git
-   - php-fpm
-   - web
+   - backup
+   #- nginx
+   #- git
+   #- php-fpm
+   #- web
 
 - hosts: percona
   remote_user: root
   roles:
-   - percona_cluster
-   
+   #- percona_cluster
+   - backup
+
 - hosts: DLB
   remote_user: root
   roles:
@@ -26,7 +28,7 @@
 - hosts: percona_rez
   remote_user: root
   roles:
-   - percona_rez
-   - proxysql2_rez
+   #- percona_rez
+   #- proxysql2_rez
 
 

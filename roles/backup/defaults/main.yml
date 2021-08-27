@@ -1,0 +1,20 @@
+script_suite_dir: /etc/tools
+source_suite_dir: /var/www
+backup_suite_dir: /backup
+backup_suite_log: /var/log/backup.log
+backup_suite_hour: 6
+backup_suite_min: 00
+
+script_full_backup_db_dir: /etc/tools
+full_backup_db_dir: /backup
+full_backup_db_log: /var/log/backup.log
+full_backup_db_hour: 4
+full_backup_db_min: 8
+
+script_diff_backup_db_dir: /etc/tools
+diff_backup_db_dir: /backup
+diff_backup_db_log: /var/log/backup.log
+diff_backup_db_hour: '*'
+diff_backup_db_min: '*/5'
+
+

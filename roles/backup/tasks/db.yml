@@ -1,0 +1,54 @@
+- name: ensures {{ script_full_backup_db_dir }} dir exists
+  file: 
+    path: '{{ script_full_backup_db_dir }}' 
+    state: directory
+
+- name: Template configuration file full_backup_db.sh
+  template:
+    src: full_backup_db.sh.j2
+    dest: '{{ script_full_backup_db_dir }}/full_backup_db.sh'
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: ensures {{ full_backup_db_dir }} dir exists
+  file: 
+    path: '{{ full_backup_db_dir }}' 
+    state: directory
+
+- name: Creates a cron file for full db backup in /etc/cron.d
+  cron:
+    name: full_backup
+    minute: "{{ full_backup_db_min }}"
+    hour: "{{ full_backup_db_hour }}"
+    user: root
+    job: "{{ script_full_backup_db_dir }}/full_backup_db.sh >> {{ full_backup_db_log }} 2>&1"
+    cron_file: full_backup
+
+- name: ensures {{ script_diff_backup_db_dir }} dir exists
+  file: 
+    path: '{{ script_diff_backup_db_dir }}' 
+    state: directory
+
+- name: Template configuration file diff_backup_db.sh
+  template:
+    src: diff_backup_db.sh.j2
+    dest: '{{ script_diff_backup_db_dir }}/diff_backup_db.sh'
+    owner: root
+    group: root
+    mode: '0700'
+
+- name: ensures {{ diff_backup_db_dir }} dir exists
+  file: 
+    path: '{{ diff_backup_db_dir }}' 
+    state: directory
+
+- name: Creates a cron file for diff db backup in /etc/cron.d
+  cron:
+    name: diff_backup
+    minute: "{{ diff_backup_db_min }}"
+    hour: "{{ diff_backup_db_hour }}"
+    user: root
+    job: "{{ script_diff_backup_db_dir }}/diff_backup_db.sh >> {{ diff_backup_db_log }} 2>&1"
+    cron_file: diff_backup
+

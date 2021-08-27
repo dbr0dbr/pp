@@ -1,0 +1,13 @@
+#!/bin/bash
+DATA=`date +%Y-%m-%d`
+BACKUP_DIR="{{ full_backup_db_dir }}"
+
+cd  $SOURCE
+echo "*****`data` start full backup*****"
+mkdir -p $BACKUP_DIR/$DATA
+xtrabackup --backup --user=root --target-dir=$BACKUP_DIR/$DATA/full
+xtrabackup --prepare —target-dir=$BACKUP_DIR/$DATA/full
+cd $BACKUP_DIR/$DATA/
+tar -czvf $BACKUP_DIR/$DATA/full.tar.gz *
+echo "*****`data` complete full backup*****"
+echo ""
