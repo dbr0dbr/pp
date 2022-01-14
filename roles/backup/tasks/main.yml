@@ -1,3 +1,29 @@
+- name: Create a share directory if it does not exist
+  file:
+    path: "{{ share_dir }}"
+    state: directory
+    owner: root
+    group: root
+
+- name: install cifs-utils
+  yum:
+    name: cifs-utils
+  environment: "{{ proxy_env }}"
+
+- name: Template configuration file for backup share
+  template:
+    src: '.backup_credentials.j2'
+    dest: '/root/.backup_credentials'
+    mode: 600
+
+- name: "mount backup share"
+  mount:
+    state: "mounted"
+    fstype: "cifs"
+    name: "{{ share_dir }}"
+    src: "{{ backup_path }}"
+    opts: "credentials=/root/.backup_credentials,file_mode=0640,dir_mode=0750,gid=root,uid=root"
+
 - name: backup web
   include_tasks: suite.yml
   when: inventory_hostname == groups['web'][0]
@@ -5,3 +31,12 @@
 - name: backup DB
   include_tasks: db.yml
   when: inventory_hostname == groups['percona'][0]
+
+- name: restore DB
+  include_tasks: restore_db.yml
+  when: full_backup is defined and inventory_hostname in groups['percona']
+  tags: 
+    - restore
+    - never
+
+

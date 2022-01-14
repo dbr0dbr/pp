@@ -1,10 +1,9 @@
-
 - name: Install percona repo.
   yum:
      name: "{{ percona_repo_url}}"
      state: present
   environment: "{{ proxy_env }}"
-  
+
 - name: "Configure Percona repository"
   shell: "percona-release enable-only pxc-{{ percona_ver }} release"
   environment: "{{ proxy_env }}"
@@ -12,7 +11,7 @@
 - name: "Configure Percona repository"
   shell: "percona-release enable tools release"
   environment: "{{ proxy_env }}"
-  
+
 - name: Install proxysql2.
   yum:
      name: "proxysql2"
@@ -60,7 +59,7 @@
   template:
     src: .my.cnf.j2
     dest: '/root/.my.cnf'
-  vars: 
+  vars:
     mysql_root_password: "admin"
   when: install_status.changed
 
@@ -71,7 +70,7 @@
     - "SAVE ADMIN VARIABLES TO DISK;"
     - "LOAD ADMIN VARIABLES TO RUNTIME;"
   when: install_status.changed
-    
+
 - name: Template configuration file for /root/.my.cnf (master)
   template:
     src: .my.cnf.j2
@@ -79,8 +78,8 @@
 
 - name: configure cluster servers
   shell: mysql -u admin -h 127.0.0.1 -P 6032 -e " INSERT INTO mysql_servers(hostgroup_id, hostname, port) VALUES (0,  '{{ hostvars[groups['percona_rez'][0]]['ansible_host'] }}'  , 3306); "
-  when: install_status.changed  
-  
+  when: install_status.changed
+
 - name: save changes
   shell: mysql --connect-expired-password -u admin -h 127.0.0.1 -P 6032 -e "{{ item }}"
   with_items:
@@ -89,18 +88,16 @@
   when: install_status.changed
 
 - name: configure proxysql_user
-  shell: mysql -u admin -h 127.0.0.1 -P 6032 -e "UPDATE global_variables SET variable_value='{{ proxysql_user }}' WHERE variable_name='mysql-monitor_username';"
-
-- name: configure proxysql_pass
-  shell: mysql -u admin -h 127.0.0.1 -P 6032 -e "UPDATE global_variables SET variable_value= '{{ proxysql_pass }}' WHERE variable_name='mysql-monitor_password';"
-  
-- name: save changes
   shell: mysql --connect-expired-password -u admin -h 127.0.0.1 -P 6032 -e "{{ item }}"
   with_items:
+    - "UPDATE global_variables SET variable_value='{{ proxysql_user }}' WHERE variable_name='mysql-monitor_username';"
+    - "UPDATE global_variables SET variable_value= '{{ proxysql_pass }}' WHERE variable_name='mysql-monitor_password';"
+    - "LOAD MYSQL VARIABLES TO RUNTIME;"
+    - "SAVE MYSQL VARIABLES TO DISK;"
     - "LOAD MYSQL SERVERS TO RUNTIME;"
     - "SAVE MYSQL SERVERS TO DISK;"
-    - "LOAD ADMIN VARIABLES TO RUNTIME;"
-    - "SAVE ADMIN VARIABLES TO DISK;"
+#  when: install_status.changed
+
 
 - name: change sql app password
   shell: mysql -u admin -h 127.0.0.1 -P 6032 -e "{{ item }}"

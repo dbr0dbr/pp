@@ -92,19 +92,17 @@
     - "SAVE MYSQL SERVERS TO DISK;"
   when: install_status.changed
 
+
 - name: configure proxysql_user
-  shell: mysql -u admin -h 127.0.0.1 -P 6032 -e "UPDATE global_variables SET variable_value='{{ proxysql_user }}' WHERE variable_name='mysql-monitor_username';"
-
-- name: configure proxysql_pass
-  shell: mysql -u admin -h 127.0.0.1 -P 6032 -e "UPDATE global_variables SET variable_value= '{{ proxysql_pass }}' WHERE variable_name='mysql-monitor_password';"
-
-- name: save changes
   shell: mysql --connect-expired-password -u admin -h 127.0.0.1 -P 6032 -e "{{ item }}"
   with_items:
+    - "UPDATE global_variables SET variable_value='{{ proxysql_user }}' WHERE variable_name='mysql-monitor_username';"
+    - "UPDATE global_variables SET variable_value= '{{ proxysql_pass }}' WHERE variable_name='mysql-monitor_password';"
+    - "LOAD MYSQL VARIABLES TO RUNTIME;"
+    - "SAVE MYSQL VARIABLES TO DISK;"
     - "LOAD MYSQL SERVERS TO RUNTIME;"
     - "SAVE MYSQL SERVERS TO DISK;"
-    - "LOAD ADMIN VARIABLES TO RUNTIME;"
-    - "SAVE ADMIN VARIABLES TO DISK;"
+#  when: install_status.changed
 
 
 - name: change sql app password

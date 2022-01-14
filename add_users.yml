@@ -1,0 +1,7 @@
+- hosts: web
+  remote_user: root
+  roles:
+   - add_users
+  vars_files:
+    - ./vars/main.yml
+#    - ./vars/credentials.yml

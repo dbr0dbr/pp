@@ -25,12 +25,12 @@
 
 - name: Install percona cluster.
   yum:
-     name: "percona-xtradb-cluster"
+     name: "{{ percona_xtradb }}"
   environment: "{{ proxy_env }}"
 
 - name: Install percona xtrabackup.
   yum:
-     name: "percona-xtrabackup-{{ percona_ver }}"
+     name: "{{ percona_xtrabackup }}"
      state: present
   environment: "{{ proxy_env }}"
 
@@ -163,3 +163,12 @@
     target: /tmp/dump.sql
   when: server_id == '1' and dump is defined
 
+- name: Create mysql user
+  mysql_user:
+    login_user: root
+    name: '{{ mysql_app_user }}'
+    password: '{{ mysql_app_pass }}'
+    priv: '{{ mysql_app_priv }}.*:ALL'
+    state: present
+  when: server_id == '1'
+  tags: never

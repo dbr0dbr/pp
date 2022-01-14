@@ -1,0 +1,112 @@
+- name: config ntp
+  shell: yum -y install ntpdate; ntpdate pool.ntp.org; rm -rf {{ backup_dir }}/prepare/
+  tags: 
+    - restore
+
+- name: collect facts about system services
+  service_facts:
+  register: services_state
+  tags: 
+    - restore
+
+- name: stop mysql@bootstrap
+  systemd:
+    state: stopped
+    name: mysql@bootstrap
+  when: "'mysql@bootstrap.service' in services_state['ansible_facts']['services'] and services_state['ansible_facts']['services']['mysql@bootstrap.service']['state'] == 'running'"
+  tags: 
+    - restore
+
+- name: stop mysql
+  systemd:
+    state: stopped
+    name: mysql
+  when: "'mysql.service' in services_state['ansible_facts']['services'] and services_state['ansible_facts']['services']['mysql.service']['state'] == 'running'"
+  tags: 
+    - restore
+
+- name: ensure "{{ backup_dir }}" exist
+  file:
+    path: "{{ backup_dir }}"
+    state: directory
+    recurse: yes
+  tags: 
+    - restore
+
+- name: backup mysql dir
+  shell: 'if [ -d "{{ backup_dir }}/mysql_bak" ]; then rm -rf {{ backup_dir }}/mysql_bak; fi; mv /var/lib/mysql {{ backup_dir }}/mysql_bak'
+  tags: 
+    - restore
+
+- name: create /var/lib/mysql
+  file:
+    path: /var/lib/mysql
+    state: directory
+    recurse: yes
+    owner: mysql
+    group: mysql  
+  tags: 
+    - restore
+
+- name: unpack full backup 
+  shell: mkdir -p {{ backup_dir }}/prepare; cd {{ backup_dir }}/prepare/; sleep 10; tar -xf {{ full_backup }}
+  tags: 
+    - restore
+
+- name: unpack diff backup 
+  shell: mkdir -p {{ backup_dir }}/prepare/diff; cd {{ backup_dir }}/prepare/diff; tar -xf {{ diff_backup }}
+  when: diff_backup is defined
+  tags: 
+    - restore
+
+- name: prepare full backup
+  shell: "xtrabackup --prepare --apply-log-only --target-dir={{ backup_dir }}/prepare/full"
+  tags: 
+    - restore
+
+- name: prepare diff backup
+  shell: "xtrabackup --prepare --apply-log-only --target-dir={{ backup_dir }}/prepare/full --incremental-dir={{ backup_dir }}/prepare/diff"
+  when: diff_backup is defined
+  tags: 
+    - restore
+  
+- name: restore backup
+  shell: "{{ item }}"
+  with_items: 
+    - xtrabackup --copy-back --target-dir={{ backup_dir }}/prepare/full
+    - chown -R mysql:mysql /var/lib/mysql
+  tags: 
+    - restore
+
+- name: Set mysql servicename for nodes
+  set_fact:
+    mysql_service_name: "{% if inventory_hostname == groups['percona'][0] %}mysql@bootstrap{% else %}mysql{% endif %}"
+  tags: 
+    - restore
+
+- name: start mysql@bootstrap
+  systemd:
+    state: started
+    name: mysql@bootstrap
+  when: inventory_hostname == groups['percona'][0]
+  tags: 
+    - restore
+
+- name: start mysql
+  systemd:
+    state: started
+    name: mysql
+  when: inventory_hostname != groups['percona'][0]
+  throttle: 1
+  tags: 
+    - restore
+
+- name: clean slave
+  file:
+    path: '{{ item }}'
+    state: absent
+  with_items:
+    - "{{ backup_dir }}/mysql_bak"
+    - "{{ backup_dir }}/prepare"
+  tags: 
+    - restore

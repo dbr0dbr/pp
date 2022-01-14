@@ -1,0 +1,33 @@
+---
+#- debug: msg="{{ system_users | selectattr('groups') | list }}"
+
+- name: Create group
+  group:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ system_users | selectattr('groups', 'defined') | map(attribute='groups') | list}}"
+
+- name: add users with groups
+  become: true
+  user:
+      name: "{{ item.name }}"
+      groups: "{{ item.groups }}"
+      shell: /bin/bash
+      password: "{{ item.pass | string | password_hash('sha512') }}"
+      append: yes
+      update_password: on_create 
+      comment: 'Created by Ansible'
+  when: item.groups is defined
+  with_items: "{{ system_users }}"
+  
+- name: add user without groups
+  become: true
+  user:
+      name: "{{ item.name }}"
+      shell: /bin/bash
+      password: "{{ item.pass | string | password_hash('sha512') }}"
+      append: yes
+      update_password: on_create 
+      comment: 'Created by Ansible'
+  when: item.groups is not defined
+  with_items: "{{ system_users }}"

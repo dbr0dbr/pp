@@ -1,3 +1,13 @@
+- name: get replication statusmeta
+  shell: mysql -u root -e 'SHOW SLAVE STATUS \G' |grep Slave_.*Running
+  args:
+    creates: /etc/my.cnf
+  ignore_errors: yes
+  register: status
+
+- name: end_host if replacation ok
+  meta: end_host
+  when: '(status.stdout_lines[1] is defined) and ("Slave_IO_Running: Yes" in status.stdout_lines[0]) and ("Slave_SQL_Running: Yes" in status.stdout_lines[1])'
 
 - name: Install percona repo.
   yum:
@@ -18,12 +28,12 @@
 
 - name: Install percona cluster.
   yum:
-     name: "percona-xtradb-cluster"
+     name: "{{ percona_xtradb }}"
   environment: "{{ proxy_env }}"
 
 - name: Install percona xtrabackup.
   yum:
-     name: "percona-xtrabackup-{{ percona_ver }}"
+     name: "{{ percona_xtrabackup }}"
      state: present
   environment: "{{ proxy_env }}"
 
@@ -31,9 +41,7 @@
   template:
     src: my.cnf.j2
     dest: '/etc/my.cnf'
-  notify:
-    - restart mysql
-  
+
 - name: Open ports for mysql
   firewalld:
     port: "3306/tcp"
@@ -42,8 +50,32 @@
     immediate: yes
 
 - name: set node for backup ip
-  set_fact: 
+  set_fact:
     node_for_backup_ip: "{{ hostvars[groups['percona'][0]]['ansible_host'] }}"
+
+
+
+
+
+
+- name: clean node_for_backup
+  file:
+    path: '{{ backup_dir }}/transfer'
+    state: absent
+  delegate_to: '{{ node_for_backup_ip }}'
+
+- name: clean slave
+  file:
+    path: '{{ item }}'
+    state: absent
+  with_items:
+    - '{{ backup_dir }}'
+    - '/var/lib/mysql_bak'
+
+
+
+
+
 
 - name: Generate RSA host key
   shell: ssh-keygen -q -t rsa  -C "" -N "" -f /root/.ssh/id_rsa
@@ -51,7 +83,7 @@
     creates: /root/.ssh/id_rsa
     chdir: /root/.ssh
   delegate_to: '{{ node_for_backup_ip }}'
-  
+
 - name: Store file into /root/.ssh/id_rsa.pub
   fetch:
     src: /root/.ssh/id_rsa.pub
@@ -65,28 +97,44 @@
     state: present
     key: "{{ lookup('file', '/tmp/id_rsa.pub') }}"
 
+- name: ensures {{ backup_dir }} dir exists
+  file:
+    path: '{{ backup_dir }}'
+    state: directory
+
+- name: ensures {{ backup_dir }} dir exists
+  file:
+    path: '{{ backup_dir }}'
+    state: directory
+  delegate_to: '{{ node_for_backup_ip }}'
+
 - name: create backup
-  shell: xtrabackup --backup --user=root --target-dir={{ backup_dir }}
+  shell: xtrabackup --backup --user=root --target-dir={{ backup_dir }}/transfer
   args:
-    creates: "{{ backup_dir }}"
+    creates: "{{ backup_dir }}/transfer"
   delegate_to: '{{ node_for_backup_ip }}'
 
 - name: copy backup to slave
-  shell: rsync -avpP -e "ssh -o StrictHostKeyChecking=no" {{ backup_dir }} root@{{ansible_host}}:{{ backup_dir | dirname }} 
+#  shell: echo 'rsync -avpP -e "ssh -o StrictHostKeyChecking=no" {{ backup_dir }}/transfer root@{{ansible_host}}:{{ backup_dir | dirname }} '
+  shell: rsync -avpP -e "ssh -o StrictHostKeyChecking=no" {{ backup_dir }}/transfer root@{{ansible_host}}:{{ backup_dir }}
   args:
-    removes: "{{ backup_dir }}"
+    removes: "{{ backup_dir }}/transfer"
   delegate_to: '{{ node_for_backup_ip }}'
+#  register: cop
+
+#- debug: var=cop.stdout
+#- meta: end_play
 
 - name: stop mysql
   systemd:
     state: stopped
     name: mysql
-    
+
 - name: backup mysql dir
-  shell: mv /var/lib/mysql /var/lib/mysql_bak    
+  shell: mv /var/lib/mysql /var/lib/mysql_bak
 
 - name: restore backup to slave
-  shell: xtrabackup --move-back --target-dir={{ backup_dir }}
+  shell: xtrabackup --move-back --target-dir={{ backup_dir }}/transfer
   args:
     removes: "{{ backup_dir }}"
 
@@ -98,11 +146,11 @@
     owner: mysql
     group: mysql
 
-- name: copy config to slave
+- name: Create user for replication
   shell: mysql  --connect-expired-password -u root -e "{{ item }}"
   with_items:
-    - "CREATE USER IF NOT EXISTS 'repl_user'@'192.168.121.139' IDENTIFIED WITH mysql_native_password BY 'repl_pass123!';"
-    - "GRANT REPLICATION SLAVE on *.* to 'repl_user'@'192.168.121.139';"
+    - "CREATE USER IF NOT EXISTS '{{ mysql_repl_user }}'@'{{ ansible_host  }}' IDENTIFIED WITH mysql_native_password BY '{{ mysql_repl_pass }}';"
+    - "GRANT REPLICATION SLAVE on *.* to '{{ mysql_repl_user }}'@'{{ ansible_host }}';"
     - "FLUSH PRIVILEGES;"
   delegate_to: '{{ node_for_backup_ip }}'
 
@@ -134,11 +182,11 @@
     line: wsrep_node_address={{ ansible_host }}
 
 - name: get log_file line
-  shell: cat {{ backup_dir }}/xtrabackup_binlog_info |awk '{print $1}'
+  shell: cat {{ backup_dir }}/transfer/xtrabackup_binlog_info |awk '{print $1}'
   register: log_file
 
 - name: get log_pos line
-  shell: cat {{ backup_dir }}/xtrabackup_binlog_info |awk '{print $2}'
+  shell: cat {{ backup_dir }}/transfer/xtrabackup_binlog_info |awk '{print $2}'
   register: log_pos
 
 - name: start mysql
@@ -148,7 +196,12 @@
 
 - name: Set replication
   shell: mysql  --connect-expired-password -u root -e "CHANGE MASTER TO MASTER_HOST='{{ node_for_backup_ip }}', MASTER_USER='{{ mysql_repl_user }}', MASTER_PASSWORD='{{ mysql_repl_pass }}', MASTER_LOG_FILE='{{ log_file.stdout }}', MASTER_LOG_POS={{ log_pos.stdout }}; START SLAVE;"
-  
+  register: output
+
+- debug: var=output
+- debug: var=log_file
+- debug: var=log_pos
+- meta: end_play
 - name: clean localhost
   file:
     path: /tmp/id_rsa.pub
@@ -156,7 +209,7 @@
 
 - name: clean node_for_backup
   file:
-    path: '{{ backup_dir }}'
+    path: '{{ backup_dir }}/transfer'
     state: absent
   delegate_to: '{{ node_for_backup_ip }}'
 
@@ -164,6 +217,6 @@
   file:
     path: '{{ item }}'
     state: absent
-  with_items: 
+  with_items:
     - '{{ backup_dir }}'
     - '/var/lib/mysql_bak'

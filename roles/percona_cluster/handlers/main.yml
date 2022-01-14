@@ -3,4 +3,4 @@
     state: restarted
     daemon_reload: yes
     name: "{{ mysql_service_name }}"
-  when: server_id != 1  
+  #when: server_id != 1  

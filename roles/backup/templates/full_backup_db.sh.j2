@@ -1,13 +1,28 @@
 #!/bin/bash
 DATA=`date +%Y-%m-%d`
-BACKUP_DIR="{{ full_backup_db_dir }}"
+SHARE_DIR="{{ share_dir }}"
+BACKUP_DIR="{{ backup_dir }}"
 
-cd  $SOURCE
-echo "*****`data` start full backup*****"
-mkdir -p $BACKUP_DIR/$DATA
-xtrabackup --backup --user=root --target-dir=$BACKUP_DIR/$DATA/full
-xtrabackup --prepare —target-dir=$BACKUP_DIR/$DATA/full
-cd $BACKUP_DIR/$DATA/
-tar -czvf $BACKUP_DIR/$DATA/full.tar.gz *
-echo "*****`data` complete full backup*****"
+test_file="{{share_dir}}/DO_NOT_DELETE.txt"
+timeout="{{ mount_timeout }}"
+if [ ! -f "$test_file" ]; then mount "{{share_dir}}" > /dev/null  2>&1 ; fi
+if [ ! -f "$test_file" ]; then sleep $timeout; mount "{{share_dir}}" > /dev/null 2>&1; fi
+if [ ! -f "$test_file" ]; then echo "*****`date` share mount error, backup failed*****"; exit 1 ; fi
+
+echo "*****`date` start full backup*****"
+if [ -f ${SHARE_DIR}/${DATA}/${DATA}_db_full.tar.gz ]; then
+  xtrabackup --backup --user=root --target-dir=$BACKUP_DIR/full_tmp
+  xtrabackup --prepare —target-dir=$BACKUP_DIR/full_tmp
+  cd $BACKUP_DIR/full_tmp/
+  tar -czvf ${SHARE_DIR}/${DATA}/$(date +%Y-%m-%d-%H%M%S)_db_full.tar.gz *
+  rm -rf $BACKUP_DIR/full_tmp/
+else
+  rm -rf $BACKUP_DIR/full/*
+  mkdir -p $SHARE_DIR/$DATA
+  xtrabackup --backup --user=root --target-dir=$BACKUP_DIR/full
+  xtrabackup --prepare —target-dir=$BACKUP_DIR/full
+  cd $BACKUP_DIR/full/
+  tar -czvf ${SHARE_DIR}/${DATA}/${DATA}_db_full.tar.gz *
+fi
+echo "*****`date` complete full backup*****"
 echo ""

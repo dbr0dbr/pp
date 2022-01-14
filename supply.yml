@@ -2,33 +2,49 @@
 - hosts: WLB
   remote_user: root
   roles:
-   #- nginx
-   #- web_balancer 
+   - nginx
+   - web_balancer 
+  vars_files:
+    - ./vars/main.yml
 
 - hosts: web
   remote_user: root
   roles:
    - backup
-   #- nginx
-   #- git
-   #- php-fpm
-   #- web
+   - nginx
+   - git
+   - php-fpm
+   - web
+  vars_files:
+    - ./vars/main.yml
+
+- hosts: web
+  remote_user: root
+  roles:
+   - add_users
+  vars_files:
+    - ./vars/main.yml
 
 - hosts: percona
   remote_user: root
   roles:
-   #- percona_cluster
+   - percona_cluster
    - backup
+  vars_files:
+    - ./vars/main.yml
 
 - hosts: DLB
   remote_user: root
   roles:
    - proxysql2   
-   
+  vars_files:
+    - ./vars/main.yml
+
 - hosts: percona_rez
   remote_user: root
   roles:
-   #- percona_rez
-   #- proxysql2_rez
-
+   - percona_rez
+   - proxysql2_rez
+  vars_files:
+    - ./vars/main.yml
 

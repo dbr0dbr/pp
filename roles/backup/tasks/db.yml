@@ -3,6 +3,11 @@
     path: '{{ script_full_backup_db_dir }}' 
     state: directory
 
+- name: ensures {{ backup_dir }} dir exists
+  file: 
+    path: '{{ backup_dir }}' 
+    state: directory
+
 - name: Template configuration file full_backup_db.sh
   template:
     src: full_backup_db.sh.j2

@@ -1,3 +1,11 @@
+backup_dir: /backup
+
+backup_user: 'rmsuser'
+backup_pass: '11111111'
+backup_path: '//192.168.121.226/backup'
+share_dir: '/mnt/backup'
+mount_timeout: '300'
+
 script_suite_dir: /etc/tools
 source_suite_dir: /var/www
 backup_suite_dir: /backup

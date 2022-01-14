@@ -1,0 +1,49 @@
+# For configuration ansible
+ansible_user: root
+ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+
+# User for LSYNCD
+ssh_user: root
+
+proxy_env: {"http_proxy" : "http://192.168.121.1:8888", "https_proxy" : "http://192.168.121.1:8888", "no_proxy" : ".atbmarket.com,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"}
+percona_xtradb: percona-xtradb-cluster-0:8.0.23-14.1.el7.x86_64
+percona_xtrabackup: percona-xtrabackup-80-0:8.0.25-17.1.el7.x86_64
+
+cert: supplier.atbmarket.com.crt
+key: supplier.atbmarket.com.key 
+
+# Proxy SQL VRRPD config (supply-dlb)
+virtual_ip: 10.0.6.186/23
+virtual_router_id: 33
+vrrp_interface: eth0
+
+# Развещение проекта, web root directory
+web_root_dir: '/var/www'
+
+virtual_ip_wlb: 10.0.6.185/23
+virtual_router_id_wlb: 34
+vrrp_interface_wlb: eth0
+
+splunk_forwarder_logs:
+  - name: "/var/log/audit/audit.log"
+    disabled: false
+    index: linux
+    sourcetype: linux_audit
+  - name: "/var/log/message.log"
+    disabled: false
+    index: linux
+    sourcetype: linux_messages_syslog
+  - name: "/var/log/secure.log"
+    disabled: false
+    index: linux
+    sourcetype: linux_secure
+  - name: "/var/www/suitecrm.log"
+    disabled: false
+    index: Supply
+    sourcetype: psv
+
+user_name: supplier_portal_admin
+user_pass: 'o5u9KpC9MiDK'
+user_groups:
+      - wheel
+      - "{{ user_name }}"

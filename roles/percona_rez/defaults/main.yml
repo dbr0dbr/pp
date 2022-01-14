@@ -1,5 +1,8 @@
 percona_repo_url: https://repo.percona.com/yum/percona-release-latest.noarch.rpm
 percona_ver: 80
+percona_xtradb: percona-xtradb-cluster-0:8.0.23-14.1.el7.x86_64
+percona_xtrabackup: percona-xtrabackup-80-0:8.0.25-17.1.el7.x86_64
+
 mysql_root_password: ASwq23.,1234
 db_name: pp_web1
 
@@ -16,3 +19,4 @@ mysql_repl_pass: repl_pass
 
 
 backup_dir: /tmp/backup
+

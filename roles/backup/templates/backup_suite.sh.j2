@@ -1,9 +1,19 @@
 #!/bin/bash
-DATE=$(date +%Y-%m-%d-%H%M%S)
-BACKUP_DIR="{{ backup_suite_dir }}"
+test_file="{{share_dir}}/DO_NOT_DELETE.txt"
+timeout="{{ mount_timeout }}"
+if [ ! -f "$test_file" ]; then mount "{{share_dir}}" > /dev/null  2>&1 ; fi
+if [ ! -f "$test_file" ]; then sleep $timeout; mount "{{share_dir}}" > /dev/null 2>&1; fi
+if [ ! -f "$test_file" ]; then echo "*****`date` share mount error, backup failed*****"; exit 1 ; fi
+
+DATA=`date +%Y-%m-%d`
+BACKUP_DIR="{{ share_dir }}"
 SOURCE="{{ source_suite_dir }}"
 cd  $SOURCE
-echo "*****`data` start suite backup*****"
-tar -cvzpf $BACKUP_DIR/backup-$DATE.tar.gz *
-echo "*****`data` complete suite backup*****"
+echo "*****`date` start suite backup*****"
+if [ -f ${BACKUP_DIR}/${DATA}/${DATA}_www_full.tar.gz ]; then
+  tar -czvpf ${BACKUP_DIR}/${DATA}/$(date +%Y-%m-%d-%H%M%S)_www_full.tar.gz *
+else
+  tar -czvpf ${BACKUP_DIR}/${DATA}/${DATA}_www_full.tar.gz *
+fi
+echo "*****`date` complete suite backup*****"
 echo ""
